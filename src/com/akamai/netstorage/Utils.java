@@ -15,6 +15,7 @@
  */
 package com.akamai.netstorage;
 
+import com.akamai.netstorage.exception.IllegalArgumentException;
 import com.akamai.netstorage.parameter.Parameter;
 import com.akamai.netstorage.parameter.ParameterValueFormatter;
 
@@ -310,7 +311,7 @@ public class Utils {
      */
     public static Properties readIniSection(File srcFile, String section) throws IOException {
         if (!srcFile.exists())
-            throw new FileNotFoundException(String.format("Src file is not accessible %s", srcFile.toString()));
+            throw new com.akamai.netstorage.exception.FileNotFoundException(String.format("Src file is not accessible %s", srcFile.toString()));
         try (InputStream inputStream = new BufferedInputStream(new FileInputStream(srcFile))) {
             return readIniSection(inputStream, section);
         }

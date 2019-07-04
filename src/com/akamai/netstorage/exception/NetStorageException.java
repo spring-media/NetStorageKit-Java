@@ -13,42 +13,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.akamai.netstorage;
+package com.akamai.netstorage.exception;
 
 
-import com.akamai.auth.RequestSigningException;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Netstorage Exceptions are intended to differentiate between IO (Networking and File) exceptions
  *
  * @author colinb@akamai.com (Colin Bendell)
  */
-public class NetStorageException extends RequestSigningException {
+public abstract class NetStorageException extends RuntimeException {
 
 	private static final long serialVersionUID = 5716437270940718895L;
-	private int responseCode = -1;
 
     public NetStorageException(String message) {
         super(message);
     }
 
-    public NetStorageException(Throwable cause) {
-        this(cause.getMessage(), cause);
-    }
-
-	public NetStorageException(String message, int responseCode) {
-        super(message);
-        this.responseCode = responseCode;
-    }
-
     public NetStorageException(String message, Throwable cause) {
         super(message, cause);
-        if(cause instanceof NetStorageException) {
-           responseCode = ((NetStorageException) cause).getResponseCode();
-        }
     }
 
-    public int getResponseCode(){
-    	return responseCode;
+    public static NetStorageException from(int responseCode, String responseMessage, Map<String, List<String>> headerFields) {
+        switch (responseCode) {
+            case 404 : return new FileNotFoundException(responseMessage);
+            case 403 : return new AccessForbiddenException(responseMessage);
+            case 400 : return new IllegalArgumentException(responseMessage);
+        }
+        return new UnspecificNetstorageException(responseCode, responseMessage);
     }
 }

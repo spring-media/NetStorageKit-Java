@@ -15,6 +15,14 @@
  */
 package com.akamai.netstorage;
 
+import com.akamai.auth.ClientCredential;
+import com.akamai.auth.RequestSigner;
+import com.akamai.auth.RequestSigningException;
+import com.akamai.netstorage.Utils.KeyedHashAlgorithm;
+import com.akamai.netstorage.exception.ConnectionException;
+import com.akamai.netstorage.exception.LocalDateException;
+import com.akamai.netstorage.exception.NetStorageException;
+
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,11 +34,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
-
-import com.akamai.auth.ClientCredential;
-import com.akamai.auth.RequestSigner;
-import com.akamai.auth.RequestSigningException;
-import com.akamai.netstorage.Utils.KeyedHashAlgorithm;
 
 /**
  * The NetStorageCMSv35Signer is responsible for brokering the communication between the software layer and the API. This
@@ -286,22 +289,24 @@ public class NetStorageCMSv35Signer implements RequestSigner {
      * @param connection an open url connection
      * @return true if 200 OK response, false otherwise.
      * @throws NetStorageException wrapped exception if it is a recoverable exception
-     * @throws IOException         shouldn't be called at this point, but could be triggered when interrogating the response
      */
-    public boolean validate(HttpURLConnection connection) throws NetStorageException, IOException {
-        if (connection.getResponseCode() == HttpURLConnection.HTTP_OK)
-            return true;
+    public boolean validate(HttpURLConnection connection) throws NetStorageException {
+        try {
+            if (connection.getResponseCode() == HttpURLConnection.HTTP_OK)
+                return true;
 
-        // Validate Server-Time drift
-        Date currentDate = new Date();
-        long responseDate = connection.getHeaderFieldDate("Date", 0);
-        if ((responseDate != 0 && currentDate.getTime() - responseDate > 30 * 1000)
-            || (responseDate != 0 && (currentDate.getTime() - responseDate) * -1 > 30 * 1000))
-            throw new NetStorageException("Local server Date is more than 30s out of sync with Remote server");
+            // Validate Server-Time drift
+            Date currentDate = new Date();
+            long responseDate = connection.getHeaderFieldDate("Date", 0);
+            if ((responseDate != 0 && currentDate.getTime() - responseDate > 30 * 1000)
+                || (responseDate != 0 && (currentDate.getTime() - responseDate) * -1 > 30 * 1000))
+                throw new LocalDateException("Local server Date is more than 30s out of sync with Remote server");
 
-        // generic response
-        throw new NetStorageException(String.format("Unexpected Response from Server: %d %s\n%s",
-                connection.getResponseCode(), connection.getResponseMessage(), connection.getHeaderFields()), connection.getResponseCode());
+            // generic response
+            throw NetStorageException.from(connection.getResponseCode(), connection.getResponseMessage(), connection.getHeaderFields());
+        } catch (IOException e) {
+            throw new ConnectionException("An error occurred connecting to the server.", e);
+        }
     }
 
     /**
@@ -372,14 +377,18 @@ public class NetStorageCMSv35Signer implements RequestSigner {
 
             return new SignerInputStream(request.getInputStream(), request);
 
-        } catch (NetStorageException | IOException e) {
+        }
+        catch (NetStorageException | IOException e) {
             if (request != null) {
                 try (InputStream is = request.getInputStream()) {}
                 catch (IOException ioException) {}
                 try (InputStream is = request.getErrorStream()) {}
                 catch (IOException ioException) {}
             }
-            throw new NetStorageException("Communication Error", e);
+            if (e instanceof NetStorageException) {
+                throw (NetStorageException)e;
+            }
+            throw new ConnectionException("Communication Error", e);
         }
     }
 

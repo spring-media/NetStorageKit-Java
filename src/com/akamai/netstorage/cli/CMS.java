@@ -15,18 +15,13 @@
  */
 package com.akamai.netstorage.cli;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.Properties;
-import java.lang.Integer;
-
 import com.akamai.netstorage.DefaultCredential;
 import com.akamai.netstorage.NetStorage;
-import com.akamai.netstorage.NetStorageException;
 import com.akamai.netstorage.Utils;
+import com.akamai.netstorage.exception.NetStorageException;
+
+import java.io.*;
+import java.util.Properties;
 
 /**
  * Command Line sample application to demonstrate the utilization of the

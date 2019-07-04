@@ -19,12 +19,17 @@ import com.akamai.auth.RequestSigner;
 import com.akamai.auth.RequestSigningException;
 import com.akamai.builders.*;
 import com.akamai.netstorage.NetStorageCMSv35Signer.NetStorageType;
+import com.akamai.netstorage.exception.ConnectionException;
+import com.akamai.netstorage.exception.IllegalArgumentException;
+import com.akamai.netstorage.exception.NetStorageException;
+import com.akamai.netstorage.exception.StreamClosingException;
 
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 
 import static com.akamai.netstorage.Utils.readToEnd;
@@ -45,8 +50,8 @@ public class NetStorage {
     private DefaultCredential credential;
 
     // defaults
-    private int connectTimeout = 10000;
-    private int readTimeout = 10000;
+    private int connectTimeout = 15000;
+    private int readTimeout = 15000;
 
     public NetStorage(DefaultCredential credential) {
         this.credential = credential;
@@ -84,7 +89,7 @@ public class NetStorage {
             try {
                 return createRequestSigner(method, path, acsParams, uploadStream, size).execute(this.credential);
             } catch (RequestSigningException e) {
-                throw new NetStorageException(ex);
+                throw new ConnectionException(e.getMessage(), e);
             }
         }
     }
@@ -116,8 +121,9 @@ public class NetStorage {
                     }
                 }
             }
-        } catch (IOException ex) {
-            throw new NetStorageException(ex);
+        }
+        catch (IOException ex) {
+            throw new StreamClosingException("Exception while closing stream.", ex);
         }
         return NetStorageType.Unknown;
     }
@@ -131,6 +137,15 @@ public class NetStorage {
             readToEnd(inputStream);
         }
         return true;
+    }
+
+    /**
+     * list command
+     * @return an inputstrwam (xml) of netstorage directories, files, symlinks.
+     */
+    public InputStream list(String path, Map<String, String> additionalParams) {
+        APIEventBean apiEventBean = new APIEventList().withFormat("xml").withAdditionalParams(additionalParams);
+        return execute("GET", path, apiEventBean);
     }
 
     public InputStream dir(String path) throws NetStorageException {
@@ -195,6 +210,13 @@ public class NetStorage {
         return true;
     }
 
+    public InputStream statIncludingImplicit(String path) throws NetStorageException {
+        APIEventBean action = new APIEventStat().withFormat("xml");
+        Map<String, String> additionalParams = new HashMap<>();
+        additionalParams.put("implicit", "yes");
+        action.withAdditionalParams(additionalParams);
+        return execute("GET", path, action);
+    }
 
     public InputStream stat(String path) throws NetStorageException {
         return stat(path, "xml");

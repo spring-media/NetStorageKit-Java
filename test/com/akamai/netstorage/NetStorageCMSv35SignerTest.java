@@ -16,6 +16,8 @@
 package com.akamai.netstorage;
 
 import com.akamai.builders.APIEventDownload;
+import com.akamai.netstorage.exception.NetStorageException;
+import com.akamai.netstorage.exception.UnspecificNetstorageException;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -135,8 +137,7 @@ public class NetStorageCMSv35SignerTest {
 
     @Test
     public void testValidateNoDate() throws Exception {
-        exception.expect(NetStorageException.class);
-        exception.expectMessage("Unexpected Response from Server:");
+        exception.expect(UnspecificNetstorageException.class);
         NetStorageCMSv35Signer netStorageCMSv35Signer = createAPIConnection();
         HttpURLConnectionTest httpURLConnection = new HttpURLConnectionTest(netStorageCMSv35Signer.getUrl());
         httpURLConnection.setResponseCode(HttpURLConnection.HTTP_UNAVAILABLE);
@@ -145,8 +146,7 @@ public class NetStorageCMSv35SignerTest {
 
     @Test
     public void testValidateServerDateSync() throws Exception {
-        exception.expect(NetStorageException.class);
-        exception.expectMessage("Unexpected Response from Server:");
+        exception.expect(UnspecificNetstorageException.class);
         Calendar calendar = Calendar.getInstance();
         SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z");
         dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));

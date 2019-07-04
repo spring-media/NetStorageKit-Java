@@ -4,3 +4,9 @@ build
 
 # maven build artifacts
 target/
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
