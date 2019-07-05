@@ -19,11 +19,10 @@ import com.akamai.auth.RequestSigner;
 import com.akamai.auth.RequestSigningException;
 import com.akamai.builders.*;
 import com.akamai.netstorage.NetStorageCMSv35Signer.NetStorageType;
-import com.akamai.netstorage.exception.ConnectionException;
 import com.akamai.netstorage.exception.IllegalArgumentException;
-import com.akamai.netstorage.exception.NetStorageException;
-import com.akamai.netstorage.exception.StreamClosingException;
+import com.akamai.netstorage.exception.*;
 
+import java.io.FileNotFoundException;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
@@ -132,9 +131,12 @@ public class NetStorage {
         return execute(method, path, acsParams, null, null);
     }
 
-    public boolean delete(String path) throws NetStorageException, IOException {
+    public boolean delete(String path) throws NetStorageException {
         try (InputStream inputStream = execute("POST", path, new APIEventDelete())) {
             readToEnd(inputStream);
+        }
+        catch (IOException e) {
+            throw new StreamClosingException("Response could not be auto closed.", e);
         }
         return true;
     }
@@ -172,40 +174,49 @@ public class NetStorage {
         return execute("GET", path, new APIEventDu().withFormat(format));
     }
 
-    public boolean mkdir(String path) throws NetStorageException, IOException {
+    public boolean mkdir(String path) throws NetStorageException {
         try (InputStream inputStream = execute("PUT", path, new APIEventMkDir())) {
             readToEnd(inputStream);
+        } catch (IOException e) {
+            throw new StreamClosingException("Response could not be auto closed or read to end.", e);
         }
         return true;
     }
 
-    public boolean mtime(String path) throws NetStorageException, IOException {
+    public boolean mtime(String path) throws NetStorageException {
         return mtime(path, null);
     }
 
-    public boolean mtime(String path, Date mtime) throws NetStorageException, IOException {
+    public boolean mtime(String path, Date mtime) throws NetStorageException {
         //TODO: verify that this is for a file - cannot mtime on symlinks or dirs
         if (mtime == null)
             mtime = new Date();
 
         try (InputStream inputStream = execute("PUT", path, new APIEventMtime().withMtime(mtime))) {
             readToEnd(inputStream);
+        } catch (IOException e) {
+            throw new StreamClosingException("Response could not be auto closed or read to end.", e);
         }
         return true;
     }
 
-    public boolean rename(String originalPath, String newPath) throws NetStorageException, IOException {
+    public boolean rename(String originalPath, String newPath) throws NetStorageException {
         //TODO: validate path and destination start with the same cpcode
 
         try (InputStream inputStream = execute("PUT", originalPath, new APIEventRename().to(newPath))) {
             readToEnd(inputStream);
         }
+        catch (IOException e) {
+            throw new StreamClosingException("Response could not be auto closed.", e);
+        }
         return true;
     }
 
-    public boolean rmdir(String path) throws NetStorageException, IOException {
+    public boolean rmdir(String path) throws NetStorageException {
         try (InputStream inputStream = execute("POST", path, new APIEventRmdir())) {
             readToEnd(inputStream);
+        } catch (IOException e) {
+            throw new StreamClosingException("Response could not be auto closed or read to end.", e);
         }
         return true;
     }
@@ -226,29 +237,33 @@ public class NetStorage {
         return execute("GET", path, new APIEventStat().withFormat(format));
     }
 
-    public boolean symlink(String path, String target) throws NetStorageException, IOException {
+    public boolean symlink(String path, String target) throws NetStorageException {
         try (InputStream inputStream = execute("PUT", path, new APIEventSymlink().to(target))) {
             readToEnd(inputStream);
+        } catch (IOException e) {
+            throw new StreamClosingException("Response could not be auto closed or read to end.", e);
         }
         return true;
     }
 
-    public boolean quickDelete(String path) throws NetStorageException, IOException {
+    public boolean quickDelete(String path) throws NetStorageException {
         try (InputStream inputStream = execute("PUT", path, new APIEventQuickDelete())) {
             readToEnd(inputStream);
+        } catch (IOException e) {
+            throw new StreamClosingException("Response could not be auto closed or read to end.", e);
         }
         return true;
     }
 
-    public boolean upload(String path, InputStream uploadFileStream) throws NetStorageException, IOException {
+    public boolean upload(String path, InputStream uploadFileStream) throws NetStorageException {
         return upload(path, uploadFileStream, null, new Date(), null, null, null, null, false);
     }
 
-    public boolean upload(String path, InputStream uploadFileStream, Date mtime, Long size, byte[] md5Checksum, byte[] sha1Checksum, byte[] sha256Checksum, boolean indexZip) throws NetStorageException, IOException {
+    public boolean upload(String path, InputStream uploadFileStream, Date mtime, Long size, byte[] md5Checksum, byte[] sha1Checksum, byte[] sha256Checksum, boolean indexZip) throws NetStorageException {
         return upload(path, uploadFileStream, null, mtime, size, md5Checksum, sha1Checksum, sha256Checksum, indexZip);
     }
 
-    public boolean upload(String path, InputStream uploadFileStream, Map<String, String> additionalParams, Date mtime, Long size, byte[] md5Checksum, byte[] sha1Checksum, byte[] sha256Checksum, boolean indexZip) throws NetStorageException, IOException {
+    public boolean upload(String path, InputStream uploadFileStream, Map<String, String> additionalParams, Date mtime, Long size, byte[] md5Checksum, byte[] sha1Checksum, byte[] sha256Checksum, boolean indexZip) throws NetStorageException {
 
         // sanity check to ensure that indexZip is only true if the file destination is also a zip.
         // probably should throw an exception or warning instead.
@@ -264,42 +279,55 @@ public class NetStorage {
 
         try (InputStream inputStream = execute("PUT", path, action, uploadFileStream, size)) {
             readToEnd(inputStream);
+        } catch (IOException e) {
+            throw new StreamClosingException("Response could not be auto closed.", e);
         }
         return true;
     }
 
-    public boolean upload(String path, File srcFile) throws NetStorageException, IOException {
+    public boolean upload(String path, File srcFile) throws NetStorageException {
         return this.upload(path, srcFile, null, false);
     }
 
-    public boolean upload(String path, File srcFile, Map<String, String> additionalParams) throws NetStorageException, IOException {
+    public boolean upload(String path, File srcFile, Map<String, String> additionalParams) throws NetStorageException {
         return this.upload(path, srcFile, additionalParams, false);
     }
 
-    public boolean upload(String path, File srcFile, boolean indexZip) throws NetStorageException, IOException {
+    public boolean upload(String path, File srcFile, boolean indexZip) throws NetStorageException {
         return upload(path, srcFile, null, indexZip);
     }
 
-    public boolean upload(String path, File srcFile, Map<String, String> additionalParams, boolean indexZip) throws NetStorageException, IOException {
+    public boolean upload(String path, File srcFile, Map<String, String> additionalParams, boolean indexZip) throws NetStorageException {
         if (!srcFile.exists())
-            throw new FileNotFoundException(String.format("Src file is not accessible %s", srcFile.toString()));
+            throw new LocalFileNotFoundException(String.format("Src file is not accessible %s", srcFile.toString()));
 
         Date mTime = new Date(srcFile.lastModified());
         byte[] checksum;
         try (InputStream inputStream = new BufferedInputStream(new FileInputStream(srcFile))) {
             checksum = Utils.computeHash(inputStream, Utils.HashAlgorithm.SHA256);
-        }
 
-        try (InputStream inputStream = new BufferedInputStream(new FileInputStream(srcFile))) {
-            long size = srcFile.length();
-            return this.upload(path, inputStream, additionalParams, mTime, size, null, null, checksum, indexZip);
+            try (InputStream uploadInputStream = new BufferedInputStream(new FileInputStream(srcFile))) {
+                long size = srcFile.length();
+                return this.upload(path, uploadInputStream, additionalParams, mTime, size, null, null, checksum, indexZip);
+            } catch (FileNotFoundException e) {
+                throw new LocalFileNotFoundException("Source file not found.", e);
+            } catch (IOException e) {
+                throw new StreamClosingException("Could not auto-close file upload input stream.", e);
+            }
+        } catch (FileNotFoundException e) {
+            throw new LocalFileNotFoundException("Source file not found while caculating checksum.", e);
+        } catch (IOException e) {
+            throw new StreamClosingException("Could not auto-close file upload input stream for calculation of checksum.", e);
         }
     }
 
-    public boolean setmd(String path, Map<String, String> additionalParams) throws NetStorageException, IOException {
+    public boolean setmd(String path, Map<String, String> additionalParams) throws NetStorageException {
 
         try (InputStream inputStream = execute("PUT", path, new APIEventSetmd().withAdditionalParams(additionalParams))) {
             readToEnd(inputStream);
+        }
+        catch (IOException e) {
+            throw new StreamClosingException("Response could not be auto closed.", e);
         }
         return true;
     }

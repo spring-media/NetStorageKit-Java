@@ -15,25 +15,17 @@
  */
 package com.akamai.netstorage;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import com.akamai.netstorage.exception.LocalFileNotFoundException;
+import org.junit.Test;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.InputStream;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.Locale;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Unit test class for the Netstorage wrapper
@@ -305,7 +297,7 @@ public class NetStorageTest {
         assertEquals(connection.getChunkedLength(), 1024 * 1024);
     }
 
-    @Test(expected = FileNotFoundException.class)
+    @Test(expected = LocalFileNotFoundException.class)
     public void testUploadFile() throws Exception {
 
         String path = "/foobar";

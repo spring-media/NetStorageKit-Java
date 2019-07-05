@@ -16,6 +16,7 @@
 package com.akamai.netstorage;
 
 import com.akamai.netstorage.exception.IllegalArgumentException;
+import com.akamai.netstorage.exception.StreamClosingException;
 import com.akamai.netstorage.parameter.Parameter;
 import com.akamai.netstorage.parameter.ParameterValueFormatter;
 
@@ -109,7 +110,7 @@ public class Utils {
      * then null will be returned. If the InputStream is empty an empty byte[] {} will be returned.
      * @throws IOException If there is a problem with the InputStream during the compute of the hash
      */
-    public static byte[] computeHash(InputStream srcStream, HashAlgorithm hashAlgorithm) throws IOException {
+    public static byte[] computeHash(InputStream srcStream, HashAlgorithm hashAlgorithm) {
         if (srcStream == null) return null;
 
         try {
@@ -120,6 +121,8 @@ public class Utils {
                 int size;
                 while ((size = inputStream.read(buff)) != -1)
                     digest.update(buff, 0, size);
+            } catch (IOException e) {
+                throw new StreamClosingException("Computeing hash failed.", e);
             }
             return digest.digest();
         } catch (NoSuchAlgorithmException e) {

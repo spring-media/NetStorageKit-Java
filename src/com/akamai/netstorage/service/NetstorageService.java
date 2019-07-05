@@ -350,9 +350,6 @@ public class NetstorageService {
         } catch (NetStorageException e) {
             LOGGER.error("Could not delete {}", netstoragePath, e);
             throw e;
-        } catch (IOException e) {
-            LOGGER.error("Error while deleting path {}", path, e);
-            throw new UnspecificNetstorageException("Error while deleting path " + path, e);
         }
     }
 
@@ -420,9 +417,15 @@ public class NetstorageService {
         } catch (NetStorageException e) {
             LOGGER.error("Could not quick delete {}", path, e);
             throw e;
-        } catch (IOException e) {
-            throw new UnspecificNetstorageException("Real quickdelete failed.", e);
         }
+    }
+
+    public void upload(String path, InputStream inputStream) {
+        netStorage.upload(netstorageFolder + path, inputStream);
+    }
+
+    public void symlink(String path, String target) {
+        netStorage.symlink(netstorageFolder + path, netstorageFolder + target);
     }
 
     /**
