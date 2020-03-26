@@ -10,14 +10,8 @@ import lombok.Getter;
 import lombok.ToString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.http.converter.xml.MappingJackson2XmlHttpMessageConverter;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,37 +23,11 @@ import java.util.concurrent.ExecutionException;
 /**
  * This class uses the akamai java netstorage API and adds functionality
  */
-@Service
 public class NetstorageService {
     private static final Logger LOGGER = LoggerFactory.getLogger(NetstorageService.class);
 
-    @Autowired
-    private MappingJackson2XmlHttpMessageConverter xmlConverter;
-
-    @Configuration
-    static class AsyncNetstorageConfiguration {
-        @Bean(name = "deletionExecutor")
-        public ThreadPoolTaskExecutor deletionExecutor() {
-            return getThreadPoolTaskExecutor();
-        }
-
-        @Bean(name = "listingExecutor")
-        public ThreadPoolTaskExecutor listingExecutor() {
-            return getThreadPoolTaskExecutor();
-        }
-
-        private ThreadPoolTaskExecutor getThreadPoolTaskExecutor() {
-            ThreadPoolTaskExecutor pool = new ThreadPoolTaskExecutor();
-            pool.setCorePoolSize(30);
-            pool.setMaxPoolSize(30);
-            pool.setWaitForTasksToCompleteOnShutdown(true);
-            return pool;
-        }
-    }
-
-
+    final MappingJackson2XmlHttpMessageConverter xmlConverter;
     final ThreadPoolTaskExecutor listingExecutor;
-
     final ThreadPoolTaskExecutor deletionExecutor;
 
     final String netstorageHost;
@@ -69,13 +37,13 @@ public class NetstorageService {
 
     final NetStorage netStorage;
 
-    @Autowired
-    public NetstorageService(@Value("${netstorage.host}") String netstorageHost,
-                             @Value("${netstorage.user}") String netstorageUser,
-                             @Value("${netstorage.key}") String netstorageKey,
-                             @Value("${netstorage.folder}") String netstorageFolder, // aka CP-Code example: "/12345"
-                             @Qualifier("listingExecutor") ThreadPoolTaskExecutor listingExecutor,
-                             @Qualifier("deletionExecutor") ThreadPoolTaskExecutor deletionExecutor) {
+    public NetstorageService(String netstorageHost,
+                             String netstorageUser,
+                             String netstorageKey,
+                             String netstorageFolder, // aka CP-Code example: "/12345"
+                             ThreadPoolTaskExecutor listingExecutor,
+                             ThreadPoolTaskExecutor deletionExecutor,
+                             MappingJackson2XmlHttpMessageConverter xmlConverter) {
         this.netstorageHost = netstorageHost;
         this.netstorageUser = netstorageUser;
         this.netstorageKey = netstorageKey;
@@ -83,6 +51,7 @@ public class NetstorageService {
         this.netStorage = new NetStorage(new DefaultCredential(netstorageHost, netstorageUser, netstorageKey));
         this.listingExecutor = listingExecutor;
         this.deletionExecutor = deletionExecutor;
+        this.xmlConverter = xmlConverter;
     }
 
     /**
