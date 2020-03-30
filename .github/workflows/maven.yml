@@ -32,7 +32,7 @@ jobs:
     
     - name: Build with Maven
       run: |
-        cat $HOME/settings.xml
+        cat $HOME/.m2/settings.xml
         mvn -B -U dependency:resolve clean deploy
       env:
         MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
