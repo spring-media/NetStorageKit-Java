@@ -6,9 +6,7 @@ name: Java CI with Maven
 on:
   push:
     branches: [ master ]
-  pull_request:
-    branches: [ master ]
-
+  
 jobs:
   build:
 
@@ -21,8 +19,16 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: 11
+        serer-id: bild-central 
         server-username: MAVEN_USERNAME
         server-password: MAVEN_TOKEN
+        
+    - name: Cache Maven packages
+      uses: actions/cache@v1
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
     
     - name: Build with Maven
       run: mvn -B -U dependency:resolve clean deploy
