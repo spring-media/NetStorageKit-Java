@@ -31,7 +31,9 @@ jobs:
         restore-keys: ${{ runner.os }}-m2
     
     - name: Build with Maven
-      run: mvn -B -U dependency:resolve clean deploy
+      run: |
+        cat $HOME/settings.xml
+        mvn -B -U dependency:resolve clean deploy
       env:
         MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
         MAVEN_TOKEN: ${{ secrets.MAVEN_TOKEN }}
