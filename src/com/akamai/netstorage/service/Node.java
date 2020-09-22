@@ -9,11 +9,17 @@ public abstract class Node {
     final String path;
     final String directory; // starts and ends with a "/"
     final String file;
+    final long mtime;
 
-    public Node(String directory, String file) {
+    public Node(String directory, String file, long mtime) {
         this.directory = directory;
         this.file = file;
         this.path = directory + file;
+        this.mtime = mtime;
+    }
+
+    public boolean isImplicit() {
+        return false;
     }
 
     public String getPath() {

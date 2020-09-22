@@ -110,15 +110,9 @@ public class NetstorageService {
         };
     }
 
-    /**
-     * Resolves all files (directories, files, symlinks), implicit as well as explicit.
-     * The returned node is a tree of the whole file structure within the current CP code.
-     *
-     * @return the root node for the current CP code
-     * @throws com.akamai.netstorage.exception.FileNotFoundException if the directory specified by directoryName does not exist
-     */
-    public ListingDirectory list(String directoryName) {
+    public Iterator<Node> listRaw(String directoryName, boolean explicitOnly) {
         String directory = (directoryName.endsWith("/") ? directoryName.substring(0, directoryName.length() - 1) : directoryName);
+
         Iterator<Node> nodesIterator = new Iterator<Node>() {
             NetstorageXML.Resume resume = null;
             Iterator<Node> nextBatch = getNextBatch();
@@ -144,7 +138,33 @@ public class NetstorageService {
                     resume = netstorageList.resume;
                     List<Node> nodes = fromNetstorageList(netstorageList);
 
-                    return nodes.iterator();
+                    Iterator<Node> nodeIterator = nodes.iterator();
+                    if (!explicitOnly) {
+                        return nodeIterator;
+                    } else {
+                        // filter out implicit nodes
+                        return new Iterator<Node>() {
+                            Node next = null;
+                            @Override
+                            public boolean hasNext() {
+                                if (next != null) return true;
+                                while (nodeIterator.hasNext()) {
+                                    next = nodeIterator.next();
+                                    if (!next.isImplicit()) {
+                                        break;
+                                    }
+                                }
+                                return next != null;
+                            }
+
+                            @Override
+                            public Node next() {
+                                Node nextToReturn = next;
+                                next = null;
+                                return nextToReturn;
+                            }
+                        };
+                    }
                 } catch (NetStorageException e) {
                     LOGGER.warn("Some exception occurred while fetching directory {}", directory, e);
                     throw e;
@@ -163,7 +183,7 @@ public class NetstorageService {
 
                     switch (file.getType()) {
                         case "dir": {
-                            nodes.add(new ListingDirectory(directory, fileName, false));
+                            nodes.add(new ListingDirectory(directory, fileName, false, file.getMtime()));
                         }
                         break;
                         case "file": {
@@ -200,8 +220,22 @@ public class NetstorageService {
             }
         };
 
+        return nodesIterator;
+    }
+
+    /**
+     * Resolves all files (directories, files, symlinks), implicit as well as explicit.
+     * The returned node is a tree of the whole file structure within the current CP code.
+     *
+     * @return the root node for the current CP code
+     * @throws com.akamai.netstorage.exception.FileNotFoundException if the directory specified by directoryName does not exist
+     */
+    public ListingDirectory list(String directoryName) {
+        String directory = (directoryName.endsWith("/") ? directoryName.substring(0, directoryName.length() - 1) : directoryName);
+        Iterator<Node> nodesIterator = listRaw(directory, false);
+
         // build file structure as node tree
-        ListingDirectory root = new ListingDirectory(directory, false);
+        ListingDirectory root = new ListingDirectory(directory, false, new Date().getTime());
         Map<String, Node> globalMapping = new HashMap<>();
         while (nodesIterator.hasNext()) {
             Node node = nodesIterator.next();
@@ -210,6 +244,7 @@ public class NetstorageService {
 
         return root;
     }
+
 
     List<Node> fromStat(NetstorageXML.Stat stat) {
         if (stat == null) {
@@ -444,12 +479,10 @@ public class NetstorageService {
     @Getter
     public class Symlink extends Node {
         final String targetPath;
-        final long mtime;
 
         public Symlink(String directory, String file, String targetPath, long mtime) {
-            super(directory, file);
+            super(directory, file, mtime);
             this.targetPath = targetPath;
-            this.mtime = mtime;
         }
 
         @Override
@@ -485,13 +518,11 @@ public class NetstorageService {
     public class File extends Node {
         final long size;
         final String md5;
-        final long mtime;
 
         public File(String directory, String file, long size, String md5, long mtime) {
-            super(directory, file);
+            super(directory, file, mtime);
             this.size = size;
             this.md5 = md5;
-            this.mtime = mtime;
         }
 
 
@@ -556,18 +587,23 @@ public class NetstorageService {
         final List<Node> children = new ArrayList<>();
         final String pathIncludingTrailingSlash;
 
-        public ListingDirectory(String path, boolean implicit) {
-            this(DirectoryFile.fromPath(path), implicit);
+        public ListingDirectory(String path, boolean implicit, long mtime) {
+            this(DirectoryFile.fromPath(path), implicit, mtime);
         }
 
-        ListingDirectory(DirectoryFile directoryFile, boolean implicit) {
-            this(directoryFile.directory, directoryFile.file, implicit);
+        ListingDirectory(DirectoryFile directoryFile, boolean implicit, long mtime) {
+            this(directoryFile.directory, directoryFile.file, implicit, mtime);
         }
 
-        public ListingDirectory(String directory, String file, boolean implicit) {
-            super(directory, file);
+        public ListingDirectory(String directory, String file, boolean implicit, long mtime) {
+            super(directory, file, mtime);
             this.implicit = implicit;
             this.pathIncludingTrailingSlash = path + "/";
+        }
+
+        @Override
+        public boolean isImplicit() {
+            return implicit;
         }
 
         @Override
@@ -661,7 +697,7 @@ public class NetstorageService {
             String upperLevelDirectoryName = directoryWithoutTrailingSlash.substring(beginIndex);
             String upperLevelDirectoryPath = node.getDirectory().substring(0, beginIndex);
 
-            ListingDirectory implicitDirectory = new ListingDirectory(upperLevelDirectoryPath, upperLevelDirectoryName, true);
+            ListingDirectory implicitDirectory = new ListingDirectory(upperLevelDirectoryPath, upperLevelDirectoryName, true, node.getMtime());
             globalMapping.put(implicitDirectory.getPath(), implicitDirectory);
             LOGGER.info("Creating directory {}", implicitDirectory);
             implicitDirectory.insert(node, globalMapping);
@@ -692,14 +728,12 @@ public class NetstorageService {
         transient boolean childrenResolved = false;
         final long bytes;
         final long files;
-        final long mtime;
 
 
         public Directory(String directory, String file, boolean implicit, long bytes, long files, long mtime) {
-            super(directory, file, implicit);
+            super(directory, file, implicit, mtime);
             this.bytes = bytes;
             this.files = files;
-            this.mtime = mtime;
         }
 
         @Override
