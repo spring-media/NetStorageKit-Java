@@ -428,6 +428,10 @@ public class NetstorageService {
         netStorage.upload(netstorageFolder + path, inputStream);
     }
 
+    public InputStream download(String path) {
+        return netStorage.download(netstorageFolder + path);
+    }
+
     public void symlink(String path, String target) {
         netStorage.symlink(netstorageFolder + path, netstorageFolder + target);
     }

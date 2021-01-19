@@ -4,7 +4,7 @@
 
     <groupId>com.akamai</groupId>
     <artifactId>NetStorageKit-Java</artifactId>
-    <version>3.9.0-SPRING</version>
+    <version>3.10.0-SPRING</version>
     <packaging>jar</packaging>
     <name>Akamai NetStorageKit</name>
 
